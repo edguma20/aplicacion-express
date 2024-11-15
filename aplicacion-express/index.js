@@ -84,8 +84,8 @@ app.post('/login', jsonParser, function (req, res) {
 })
 
 //Corremos el servidor en el puerto 3000
-const port = 3000;
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Aplicación corriendo en el puerto ${PORT}`);
+});
 
-app.listen(port, () => {
-    console.log(`Aplicación corriendo en http://localhost:${port}`)
-})
