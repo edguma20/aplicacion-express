@@ -58,21 +58,22 @@ app.post('/agrega_todo', jsonParser, function (req, res) {
 app.get('/', function (req, res) {
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ 'status': 'ok' }));
-});
+})
 
-// Corremos el servidor en el puerto 3000
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Aplicación corriendo en el puerto ${PORT}`);
-});
 
-// Cierra la conexión a la base de datos cuando el servidor se detenga
-process.on('SIGINT', () => {
-    db.close((err) => {
-        if (err) {
-            console.error(err.message);
-        }
-        console.log('Cerrando la conexión a la base de datos.');
-        process.exit(0);
-    });
-});
+//Creamos un endpoint de login que recibe los datos como json
+app.post('/login', jsonParser, function (req, res) {
+    //Imprimimos el contenido del body
+    console.log(req.body);
+
+    //Enviamos de regreso la respuesta
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ 'status': 'ok' }));
+})
+
+//Corremos el servidor en el puerto 3000
+const port = 3000;
+
+app.listen(port, () => {
+    console.log(`Aplicación corriendo en http://localhost:${port}`)
+})
