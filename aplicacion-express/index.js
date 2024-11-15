@@ -1,91 +1,78 @@
-//Importamos las librarías requeridas
-const express = require('express')
-const bodyParser = require('body-parser')
+// Importamos las librerías requeridas
+const express = require('express');
+const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
 
-//Documentación en https://expressjs.com/en/starter/hello-world.html
-const app = express()
-
-//Creamos un parser de tipo application/json
-//Documentación en https://expressjs.com/en/resources/middleware/body-parser.html
-const jsonParser = bodyParser.json()
-
-
-// Abre la base de datos de SQLite
-let db = new sqlite3.Database('./base.sqlite3', (err) => {
+// Abre la base de datos SQLite existente
+let db = new sqlite3.Database('./basetodos.sqlite3', (err) => {
     if (err) {
-        console.error(err.message);
+        return console.error(err.message);
     }
     console.log('Conectado a la base de datos SQLite.');
+});
 
-    db.run(`CREATE TABLE IF NOT EXISTS todos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        todo TEXT NOT NULL,
-        created_at INTEGER
-    )`, (err) => {
+// Inicializa Express y el middleware para JSON
+const app = express();
+const jsonParser = bodyParser.json();
+
+// Endpoint para listar todas las tareas pendientes
+app.get('/lista_todos', function (req, res) {
+    const sql = 'SELECT * FROM todos';
+    
+    db.all(sql, [], (err, rows) => {
         if (err) {
-            console.error(err.message);
-        } else {
-            console.log('Tabla tareas creada o ya existente.');
+            return res.status(500).json({ error: err.message });
         }
+        res.status(200).json({
+            message: 'Lista de tareas',
+            data: rows
+        });
     });
 });
 
-//Creamos un endpoint de login que recibe los datos como json
-app.post('/insert', jsonParser, function (req, res) {
-    //Imprimimos el contenido del campo todo
+// Endpoint para agregar una nueva tarea
+app.post('/agrega_todo', jsonParser, function (req, res) {
     const { todo } = req.body;
-   
-    console.log(todo);
-    res.setHeader('Content-Type', 'application/json');
-    
 
     if (!todo) {
-        res.status(400).send('Falta información necesaria');
-        return;
+        return res.status(400).json({ error: 'Falta información necesaria' });
     }
-    const stmt  =  db.prepare('INSERT INTO todos (todo, created_at) VALUES (?, CURRENT_TIMESTAMP)');
 
-    stmt.run(todo, (err) => {
+    const createdAt = Math.floor(Date.now() / 1000); // Convertir a segundos
+
+    const stmt = db.prepare('INSERT INTO todos (todo, created_at) VALUES (?, ?)');
+    stmt.run(todo, createdAt, function(err) {
         if (err) {
-          console.error("Error running stmt:", err);
-          res.status(500).send(err);
-          return;
-
-        } else {
-          console.log("Insert was successful!");
+            console.error("Error al insertar el todo:", err.message);
+            return res.status(500).json({ error: 'Error interno del servidor' });
         }
+
+        console.log(`Tarea agregada con éxito. ID: ${this.lastID}`);
+        res.status(201).json({ message: 'Tarea agregada con éxito', id: this.lastID });
     });
 
     stmt.finalize();
-    
-    //Enviamos de regreso la respuesta
-    res.setHeader('Content-Type', 'application/json');
-    res.status(201).send();
-})
+});
 
-
-
+// Endpoint para probar el servidor
 app.get('/', function (req, res) {
-    //Enviamos de regreso la respuesta
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ 'status': 'ok' }));
-})
+});
 
+// Corremos el servidor en el puerto 3000
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Aplicación corriendo en el puerto ${PORT}`);
+});
 
-//Creamos un endpoint de login que recibe los datos como json
-app.post('/login', jsonParser, function (req, res) {
-    //Imprimimos el contenido del body
-    console.log(req.body);
-
-    //Enviamos de regreso la respuesta
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ 'status': 'ok' }));
-})
-
-//Corremos el servidor en el puerto 3000
-const port = 3000;
-
-app.listen(port, () => {
-    console.log(`Aplicación corriendo en http://localhost:${port}`)
-})
+// Cierra la conexión a la base de datos cuando el servidor se detenga
+process.on('SIGINT', () => {
+    db.close((err) => {
+        if (err) {
+            console.error(err.message);
+        }
+        console.log('Cerrando la conexión a la base de datos.');
+        process.exit(0);
+    });
+});
